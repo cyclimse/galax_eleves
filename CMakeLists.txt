@@ -43,6 +43,13 @@ if(GALAX_LINK_CUDA)
 endif(GALAX_LINK_CUDA)
 add_executable(galax ${SRC_FILES_MAIN})
 
+add_custom_command(
+         TARGET galax POST_BUILD
+         COMMAND ${CMAKE_COMMAND} -E copy_directory
+             ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:galax_display>/data
+         COMMENT "Copying data directory" VERBATIM
+)
+
 # cli
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lib/cli/include/CLI/CLI.hpp")
     option(CLI_COMPILE_STATIC_LIB "" OFF)
@@ -98,13 +105,6 @@ endif(GALAX_LINK_CUDA)
 if(GALAX_LINK_SDL2)
     target_compile_definitions(galax_display PUBLIC GALAX_DISPLAY_SDL2)
     target_compile_definitions(galax         PUBLIC GALAX_DISPLAY_SDL2)
-
-    add_custom_command(
-             TARGET galax_display POST_BUILD
-             COMMAND ${CMAKE_COMMAND} -E copy_directory
-                 ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:galax_display>/data
-             COMMENT "Copying data directory" VERBATIM
-    )
 
     # Find OpenGL
     find_package(OpenGL REQUIRED QUIET)

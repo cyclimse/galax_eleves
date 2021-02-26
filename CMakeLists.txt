@@ -46,6 +46,13 @@ add_executable(galax ${SRC_FILES_MAIN})
 add_custom_command(
          TARGET galax POST_BUILD
          COMMAND ${CMAKE_COMMAND} -E copy_directory
+             ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:galax>/data
+         COMMENT "Copying data directory" VERBATIM
+)
+
+add_custom_command(
+         TARGET galax_display POST_BUILD
+         COMMAND ${CMAKE_COMMAND} -E copy_directory
              ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:galax_display>/data
          COMMENT "Copying data directory" VERBATIM
 )

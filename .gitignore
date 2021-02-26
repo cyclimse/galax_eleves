@@ -2,6 +2,7 @@
 
 obj/*
 bin/*
+build/*
 
 doc/html/*
 doc/latex/*

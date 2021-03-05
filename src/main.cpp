@@ -14,7 +14,7 @@
 #include "Model/Model_CPU/Model_CPU_fast/Model_CPU_fast.hpp"
 #include "Model/Model_GPU/Model_GPU.hpp"
 
-int main(int argc, char ** argv)
+int main(int argc, char **argv)
 {
 	// class for CLI (Command Line Instructions) management
 	CLI::App app{"Galax"};
@@ -24,24 +24,24 @@ int main(int argc, char ** argv)
 
 	// according to compile option (in cmake), use a graphical display or don't
 #ifdef GALAX_DISPLAY_SDL2
-	std::string  display_type = "SDL2";
+	std::string display_type = "SDL2";
 #else
-	std::string  display_type = "NO";
+	std::string display_type = "NO";
 #endif
 
 	// core version used by default : CPU
-	std::string  core         = "CPU";
+	std::string core = "CPU";
 
 	// number of particles used by default : 2000
-	unsigned int n_particles  = 2000;
+	unsigned int n_particles = 2000;
 
 	// define CLI arguments
-	app.add_option("-c,--core"       , core       , "computing version")
-	    ->check(CLI::IsMember({"CPU", "GPU", "CPU_FAST"}));
-	app.add_option("-n,--n-particles", n_particles , "number of displayed particles")
-	    ->check(CLI::Range(0,max_n_particles));
-	app.add_option("--display"       , display_type, "disable graphical display")
-	    ->check(CLI::IsMember({"SDL2", "NO"}));
+	app.add_option("-c,--core", core, "computing version")
+		->check(CLI::IsMember({"CPU", "GPU", "CPU_FAST"}));
+	app.add_option("-n,--n-particles", n_particles, "number of displayed particles")
+		->check(CLI::Range(0, max_n_particles));
+	app.add_option("--display", display_type, "disable graphical display")
+		->check(CLI::IsMember({"SDL2", "NO"}));
 
 	// parse arguments
 	CLI11_PARSE(app, argc, argv);
@@ -66,10 +66,16 @@ int main(int argc, char ** argv)
 	// init model
 	std::unique_ptr<Model> model;
 	if (core == "CPU")
+	{
+		std::clog << "CPU: " << core << std::endl;
 		model = std::unique_ptr<Model>(new Model_CPU_naive(initstate, particles));
+	}
 #ifdef GALAX_MODEL_CPU_FAST
 	else if (core == "CPU_FAST")
+	{
+		std::clog << "CPU: " << core << std::endl;
 		model = std::unique_ptr<Model>(new Model_CPU_fast(initstate, particles));
+	}
 #endif
 #ifdef GALAX_MODEL_GPU
 	else if (core == "GPU")
@@ -79,6 +85,8 @@ int main(int argc, char ** argv)
 		exit(EXIT_FAILURE);
 
 	bool done = false;
+	int number_of_frames{};
+	std::chrono::duration<float, std::micro> total_duration{};
 
 	while (!done)
 	{
@@ -88,7 +96,7 @@ int main(int argc, char ** argv)
 		display->update(done);
 
 		// update particles positions
-		model  ->step();
+		model->step();
 
 		auto t2 = std::chrono::high_resolution_clock::now();
 
@@ -96,6 +104,14 @@ int main(int argc, char ** argv)
 
 		auto fps = (float)1.0f / (duration_us.count()) * 1000000.0f;
 		std::cout << "FPS: " << std::setw(3) << fps << "\r" << std::flush;
+
+		number_of_frames++;
+		total_duration += duration_us;
+
+		if (number_of_frames % 60 == 0)
+		{
+			std::clog << "Average FPS: " << number_of_frames / std::chrono::duration_cast<std::chrono::duration<float>>(total_duration).count() << std::endl;
+		}
 	}
 
 	return 0;

@@ -22,7 +22,7 @@ void Model_CPU_fast ::step()
 #pragma omp parallel for
     for (int i = 0; i < n_particles; i++)
     {
-        for (int j = 0; j < i; j++)
+        for (int j = i + 1; j < n_particles; j++)
         {
 
             const float diffx = particles.x[j] - particles.x[i];
@@ -49,11 +49,11 @@ void Model_CPU_fast ::step()
             accelerationsy[j] -= diffy * dij * initstate.masses[i];
             accelerationsz[j] -= diffz * dij * initstate.masses[i];
         }
-    }
+//     }
 
-    #pragma omp parallel for
-    for (int i = 0; i < n_particles; i++)
-    {
+// #pragma omp parallel for
+//     for (int i = 0; i < n_particles; i++)
+//     {
         velocitiesx[i] += accelerationsx[i] * 2.0f;
         velocitiesy[i] += accelerationsy[i] * 2.0f;
         velocitiesz[i] += accelerationsz[i] * 2.0f;

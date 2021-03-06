@@ -1,9 +1,10 @@
 #ifdef GALAX_MODEL_CPU_FAST
 
-#include <cmath>
-
 #include "Model_CPU_fast.hpp"
 
+#include <cmath>
+
+#include <eve/function/rsqrt.hpp>
 #include <omp.h>
 
 Model_CPU_fast ::Model_CPU_fast(const Initstate &initstate, Particles &particles)
@@ -16,6 +17,8 @@ void Model_CPU_fast ::step()
     std::fill(accelerationsx.begin(), accelerationsx.end(), 0);
     std::fill(accelerationsy.begin(), accelerationsy.end(), 0);
     std::fill(accelerationsz.begin(), accelerationsz.end(), 0);
+
+    constexpr bool use_rsqrt = true;
 
 // OMP  version
 #pragma omp parallel for
@@ -35,8 +38,16 @@ void Model_CPU_fast ::step()
             }
             else
             {
-                dij = std::sqrt(dij);
-                dij = 10.0f / (dij * dij * dij);
+                if constexpr (use_rsqrt)
+                {
+                    dij = dij * dij * dij;
+                    dij = 10.0f * eve::rsqrt(dij);
+                }
+                else
+                {
+                    dij = std::sqrt(dij);
+                    dij = 10.0 / (dij * dij * dij);
+                }
             }
 
             accelerationsx[i] += diffx * dij * initstate.masses[j];
@@ -63,8 +74,16 @@ void Model_CPU_fast ::step()
             }
             else
             {
-                dij = std::sqrt(dij);
-                dij = 10.0f / (dij * dij * dij);
+                if constexpr (use_rsqrt)
+                {
+                    dij = dij * dij * dij;
+                    dij = 10.0f * eve::rsqrt(dij);
+                }
+                else
+                {
+                    dij = std::sqrt(dij);
+                    dij = 10.0 / (dij * dij * dij);
+                }
             }
 
             accelerationsx[invi] += diffx * dij * initstate.masses[j];

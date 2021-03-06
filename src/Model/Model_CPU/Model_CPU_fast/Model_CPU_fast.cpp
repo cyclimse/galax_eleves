@@ -4,7 +4,6 @@
 
 #include "Model_CPU_fast.hpp"
 
-#include <mipp.h>
 #include <omp.h>
 
 Model_CPU_fast ::Model_CPU_fast(const Initstate &initstate, Particles &particles)

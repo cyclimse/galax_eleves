@@ -13,9 +13,7 @@ option(GALAX_LINK_SDL2 "Link with the SDL2 library (used for graphical display)"
 option(GALAX_LINK_CUDA "Link with the CUDA library (used for GPU model)"         OFF)
 option(GALAX_LINK_OMP  "Link with the OMP  library (used for CPU_FAST model)"    OFF)
 
-# Enable C++11
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+option(EVE_INCLUDE_DIR "Eve install directory" "/usr/local/include/eve")
 
 # Specify bin path
 set (EXECUTABLE_OUTPUT_PATH bin/)
@@ -42,6 +40,18 @@ if(GALAX_LINK_CUDA)
     add_library (galax_cuda SHARED ${SRC_FILES_CUDA})
 endif(GALAX_LINK_CUDA)
 add_executable(galax ${SRC_FILES_MAIN})
+
+target_compile_features(galax PRIVATE
+    cxx_std_20
+)
+
+target_compile_options(galax PRIVATE
+    $<$<CONFIG:Debug>:-Wall -Wpedantic -Og>
+    $<$<CONFIG:Release>:-O3 -march=native -DNDEBUG>
+)
+
+# Eve
+target_include_directories(galax PRIVATE "${EVE_INCLUDE_DIR}")
 
 add_custom_command(
          TARGET galax POST_BUILD
@@ -70,15 +80,16 @@ else()
                         "$ git submodule update --init --recursive")
 endif()
 
+# Disabled as we are chosing Eve for SIMD
 # MIPP
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lib/MIPP/src/mipp.h")
-    target_compile_definitions( galax     PUBLIC MIPP_ENABLE_BACKTRACE)
-    include_directories(PUBLIC "lib/MIPP/src" "MIPP")
-    message(STATUS "Galax - Header found: MIPP")
-else()
-    message(FATAL_ERROR "Galax - MIPP can't be found, try to init the submodule with the following cmd:\n"
-                        "$ git submodule update --init -- ../lib/MIPP/")
-endif()
+# if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lib/MIPP/src/mipp.h")
+#     target_compile_definitions( galax     PUBLIC MIPP_ENABLE_BACKTRACE)
+#     include_directories(PUBLIC "lib/MIPP/src" "MIPP")
+#     message(STATUS "Galax - Header found: MIPP")
+# else()
+#     message(FATAL_ERROR "Galax - MIPP can't be found, try to init the submodule with the following cmd:\n"
+#                         "$ git submodule update --init -- ../lib/MIPP/")
+# endif()
 
 if(GALAX_LINK_CUDA)
     target_link_libraries(galax_cuda PUBLIC galax_display)

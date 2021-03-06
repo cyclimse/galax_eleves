@@ -102,8 +102,8 @@ int main(int argc, char **argv)
 
 		std::chrono::duration<float, std::micro> duration_us = t2 - t1;
 
-		auto fps = (float)1.0f / (duration_us.count()) * 1000000.0f;
-		std::cout << "FPS: " << std::setw(3) << fps << "\r" << std::flush;
+		// auto fps = (float)1.0f / (duration_us.count()) * 1000000.0f;
+		// std::cout << "FPS: " << std::setw(3) << fps << "\r" << std::flush;
 
 		number_of_frames++;
 		total_duration += duration_us;

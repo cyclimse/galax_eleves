@@ -9,3 +9,4 @@ doc/latex/*
 
 !obj/.gitkeep
 !bin/DroidSans.ttf
+CMakeLists.txt.user

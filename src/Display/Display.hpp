@@ -7,13 +7,13 @@
 class Display
 {
 protected:
-	Particles& particles;
+	Particles &particles;
 
 public:
-	Display(Particles& particles);
-	~Display();
+	Display(Particles &particles);
+	virtual ~Display();
 
-	virtual void update(bool& done) = 0;
+	virtual void update(bool &done) = 0;
 };
 
 #endif // DISPLAY_HPP_

@@ -13,6 +13,7 @@
 #include <eve/function/max.hpp>
 #include <eve/function/mul.hpp>
 #include <eve/function/div.hpp>
+#include <eve/function/memory.hpp>
 #include <eve/function/reduce.hpp>
 #include <eve/wide.hpp>
 #include <omp.h>
@@ -42,30 +43,20 @@ void Model_CPU_fast ::step()
 
         for (int j = 0; j < i - i % 8; j += 8)
         {
-            std::copy(particles.x.cbegin() + j, particles.x.cbegin() + j + 8, regis_x.begin());
-            std::copy(particles.y.cbegin() + j, particles.y.cbegin() + j + 8, regis_y.begin());
-            std::copy(particles.z.cbegin() + j, particles.z.cbegin() + j + 8, regis_z.begin());
+            regis_x = eve::load(&particles.x[j], eve::lane<8L>);
+            regis_y = eve::load(&particles.y[j], eve::lane<8L>);
+            regis_z = eve::load(&particles.z[j], eve::lane<8L>);
 
             regis_x -= particles.x[i] * eve::one(as(regis_x));
             regis_y -= particles.y[i] * eve::one(as(regis_y));
             regis_z -= particles.z[i] * eve::one(as(regis_z));
 
-            if constexpr (!use_rsqrt)
-            {
-                regis_dij = eve::hypot(regis_x, regis_y, regis_z);
-                regis_dij = eve::max(1.0f, regis_dij);
-                regis_dij = eve::mul(eve::mul(regis_dij, regis_dij), regis_dij);
-                regis_dij = eve::div(10.0f, regis_dij);
-            }
-            else
-            {
-                regis_dij = eve::fma(regis_x, regis_x, eve::fma(regis_y, regis_y, eve::mul(regis_z, regis_z)));
-                regis_dij = eve::max(1.0f, regis_dij);
-                regis_dij = eve::mul(eve::mul(regis_dij, regis_dij), regis_dij);
-                regis_dij = 10.0f * eve::rsqrt(regis_dij);
-            }
+            regis_dij = eve::fma(regis_x, regis_x, eve::fma(regis_y, regis_y, eve::mul(regis_z, regis_z)));
+            regis_dij = eve::max(1.0f, regis_dij);
+            regis_dij = eve::mul(eve::mul(regis_dij, regis_dij), regis_dij);
+            regis_dij = 10.0f * eve::rsqrt(regis_dij);
 
-            std::copy(initstate.masses.cbegin() + j, initstate.masses.cbegin() + j + 8, regis_m.begin());
+            regis_m = eve::load(&initstate.masses[j], eve::lane<8L>);
 
             regis_x = eve::mul(regis_x, regis_dij);
             regis_y = eve::mul(regis_y, regis_dij);
@@ -75,17 +66,17 @@ void Model_CPU_fast ::step()
             accelerationsy[i] += eve::reduce(eve::mul(regis_y, regis_m), std::plus<>{});
             accelerationsz[i] += eve::reduce(eve::mul(regis_z, regis_m), std::plus<>{});
 
-            std::copy(accelerationsx.cbegin() + j, accelerationsx.cbegin() + j + 8, regis_m.begin());
+            regis_m = eve::load(&accelerationsx[j], eve::lane<8L>);
             regis_m -= initstate.masses[i] * regis_x;
-            std::copy(regis_m.begin(), regis_m.begin() + 8, accelerationsx.begin() + j);
+            eve::store(regis_m, &accelerationsx[j]);
 
-            std::copy(accelerationsy.cbegin() + j, accelerationsy.cbegin() + j + 8, regis_m.begin());
+            regis_m = eve::load(&accelerationsy[j], eve::lane<8L>);
             regis_m -= initstate.masses[i] * regis_y;
-            std::copy(regis_m.begin(), regis_m.begin() + 8, accelerationsy.begin() + j);
+            eve::store(regis_m, &accelerationsy[j]);
 
-            std::copy(accelerationsz.cbegin() + j, accelerationsz.cbegin() + j + 8, regis_m.begin());
+            regis_m = eve::load(&accelerationsz[j], eve::lane<8L>);
             regis_m -= initstate.masses[i] * regis_z;
-            std::copy(regis_m.begin(), regis_m.begin() + 8, accelerationsz.begin() + j);
+            eve::store(regis_m, &accelerationsz[j]);
         }
 
         for (int j = i - i % 8; j < i; j++)
@@ -103,16 +94,8 @@ void Model_CPU_fast ::step()
             }
             else
             {
-                if constexpr (use_rsqrt)
-                {
-                    dij = dij * dij * dij;
-                    dij = 10.0f * eve::rsqrt(dij);
-                }
-                else
-                {
-                    dij = std::sqrt(dij);
-                    dij = 10.0 / (dij * dij * dij);
-                }
+                dij = dij * dij * dij;
+                dij = 10.0f * eve::rsqrt(dij);
             }
 
             accelerationsx[i] += diffx * dij * initstate.masses[j];
@@ -127,30 +110,20 @@ void Model_CPU_fast ::step()
         auto invi = n_particles - 1 - i;
         for (int j = 0; j < invi - invi % 8; j += 8)
         {
-            std::copy(particles.x.cbegin() + j, particles.x.cbegin() + j + 8, regis_x.begin());
-            std::copy(particles.y.cbegin() + j, particles.y.cbegin() + j + 8, regis_y.begin());
-            std::copy(particles.z.cbegin() + j, particles.z.cbegin() + j + 8, regis_z.begin());
+            regis_x = eve::load(&particles.x[j], eve::lane<8L>);
+            regis_y = eve::load(&particles.y[j], eve::lane<8L>);
+            regis_z = eve::load(&particles.z[j], eve::lane<8L>);
 
             regis_x -= particles.x[invi] * eve::one(as(regis_x));
             regis_y -= particles.y[invi] * eve::one(as(regis_y));
             regis_z -= particles.z[invi] * eve::one(as(regis_z));
 
-            if constexpr (!use_rsqrt)
-            {
-                regis_dij = eve::hypot(regis_x, regis_y, regis_z);
-                regis_dij = eve::max(1.0f, regis_dij);
-                regis_dij = eve::mul(eve::mul(regis_dij, regis_dij), regis_dij);
-                regis_dij = eve::div(10.0f, regis_dij);
-            }
-            else
-            {
-                regis_dij = eve::fma(regis_x, regis_x, eve::fma(regis_y, regis_y, eve::mul(regis_z, regis_z)));
-                regis_dij = eve::max(1.0f, regis_dij);
-                regis_dij = eve::mul(eve::mul(regis_dij, regis_dij), regis_dij);
-                regis_dij = 10.0f * eve::rsqrt(regis_dij);
-            }
+            regis_dij = eve::fma(regis_x, regis_x, eve::fma(regis_y, regis_y, eve::mul(regis_z, regis_z)));
+            regis_dij = eve::max(1.0f, regis_dij);
+            regis_dij = eve::mul(eve::mul(regis_dij, regis_dij), regis_dij);
+            regis_dij = 10.0f * eve::rsqrt(regis_dij);
 
-            std::copy(initstate.masses.cbegin() + j, initstate.masses.cbegin() + j + 8, regis_m.begin());
+            regis_m = eve::load(&initstate.masses[j], eve::lane<8L>);
 
             regis_x = eve::mul(regis_x, regis_dij);
             regis_y = eve::mul(regis_y, regis_dij);
@@ -160,17 +133,17 @@ void Model_CPU_fast ::step()
             accelerationsy[invi] += eve::reduce(eve::mul(regis_y, regis_m), std::plus<>{});
             accelerationsz[invi] += eve::reduce(eve::mul(regis_z, regis_m), std::plus<>{});
 
-            std::copy(accelerationsx.cbegin() + j, accelerationsx.cbegin() + j + 8, regis_m.begin());
+            regis_m = eve::load(&accelerationsx[j], eve::lane<8L>);
             regis_m -= initstate.masses[invi] * regis_x;
-            std::copy(regis_m.begin(), regis_m.begin() + 8, accelerationsx.begin() + j);
+            eve::store(regis_m, &accelerationsx[j]);
 
-            std::copy(accelerationsy.cbegin() + j, accelerationsy.cbegin() + j + 8, regis_m.begin());
+            regis_m = eve::load(&accelerationsy[j], eve::lane<8L>);
             regis_m -= initstate.masses[invi] * regis_y;
-            std::copy(regis_m.begin(), regis_m.begin() + 8, accelerationsy.begin() + j);
+            eve::store(regis_m, &accelerationsy[j]);
 
-            std::copy(accelerationsz.cbegin() + j, accelerationsz.cbegin() + j + 8, regis_m.begin());
+            regis_m = eve::load(&accelerationsz[j], eve::lane<8L>);
             regis_m -= initstate.masses[invi] * regis_z;
-            std::copy(regis_m.begin(), regis_m.begin() + 8, accelerationsz.begin() + j);
+            eve::store(regis_m, &accelerationsz[j]);
         }
 
         for (int j = invi - invi % 8; j < invi; j++)
@@ -187,16 +160,8 @@ void Model_CPU_fast ::step()
             }
             else
             {
-                if constexpr (use_rsqrt)
-                {
-                    dij = dij * dij * dij;
-                    dij = 10.0f * eve::rsqrt(dij);
-                }
-                else
-                {
-                    dij = std::sqrt(dij);
-                    dij = 10.0 / (dij * dij * dij);
-                }
+                dij = dij * dij * dij;
+                dij = 10.0f * eve::rsqrt(dij);
             }
 
             accelerationsx[invi] += diffx * dij * initstate.masses[j];
